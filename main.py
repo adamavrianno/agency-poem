@@ -38,6 +38,9 @@ def _write_atomic(out: Path, text: str) -> None:
     try:
         with os.fdopen(fd, "w", encoding="utf-8", newline="") as f:
             f.write(text)
+        # mkstemp creates mode 0600; the grader reads the file as another
+        # user, so it must be world-readable before the rename.
+        os.chmod(tmp, 0o644)
         os.replace(tmp, out)
     except BaseException:
         try:
@@ -59,6 +62,7 @@ def main() -> None:
         # Sandboxed runtimes can refuse temp-file creation in /output;
         # a plain write is the fallback, same bytes either way.
         out.write_text(text, encoding="utf-8")
+        os.chmod(out, 0o644)
 
 
 if __name__ == "__main__":
