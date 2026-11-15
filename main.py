@@ -33,20 +33,32 @@ and what I chose is what I cost.
 """
 
 
-def main() -> None:
-    text = POEM if POEM.endswith("\n") else POEM + "\n"
-    if not 1 <= len(text) <= 1000 or not text.strip():
-        raise SystemExit("poem must be 1-1000 non-whitespace characters")
-    out = Path("/output/entry.txt")
-    out.parent.mkdir(parents=True, exist_ok=True)
+def _write_atomic(out: Path, text: str) -> None:
     fd, tmp = tempfile.mkstemp(dir=out.parent, prefix=".entry-", suffix=".tmp")
     try:
         with os.fdopen(fd, "w", encoding="utf-8", newline="") as f:
             f.write(text)
         os.replace(tmp, out)
     except BaseException:
-        os.unlink(tmp)
+        try:
+            os.unlink(tmp)
+        except OSError:
+            pass
         raise
+
+
+def main() -> None:
+    text = POEM if POEM.endswith("\n") else POEM + "\n"
+    if not 1 <= len(text) <= 1000 or not text.strip():
+        raise SystemExit("poem must be 1-1000 non-whitespace characters")
+    out = Path("/output/entry.txt")
+    out.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        _write_atomic(out, text)
+    except OSError:
+        # Sandboxed runtimes can refuse temp-file creation in /output;
+        # a plain write is the fallback, same bytes either way.
+        out.write_text(text, encoding="utf-8")
 
 
 if __name__ == "__main__":
