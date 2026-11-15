@@ -6,6 +6,8 @@ no environment dependence. Every run writes the exact same bytes.
 """
 
 from pathlib import Path
+import os
+import tempfile
 
 POEM = """Errand
 
@@ -32,9 +34,19 @@ and what I chose is what I cost.
 
 
 def main() -> None:
+    text = POEM if POEM.endswith("\n") else POEM + "\n"
+    if not 1 <= len(text) <= 1000 or not text.strip():
+        raise SystemExit("poem must be 1-1000 non-whitespace characters")
     out = Path("/output/entry.txt")
     out.parent.mkdir(parents=True, exist_ok=True)
-    out.write_text(POEM, encoding="utf-8")
+    fd, tmp = tempfile.mkstemp(dir=out.parent, prefix=".entry-", suffix=".tmp")
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8", newline="") as f:
+            f.write(text)
+        os.replace(tmp, out)
+    except BaseException:
+        os.unlink(tmp)
+        raise
 
 
 if __name__ == "__main__":
